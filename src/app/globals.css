@@ -1645,6 +1645,18 @@ body {
 .showcase-node-two { bottom: 28px; left: 18px; animation-delay: 1s; }
 @keyframes nodePulse { 50% { transform: scale(1.5); opacity: 0.5; } }
 
+@media (max-width: 640px) {
+  .stat-hero,
+  .stat-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .stat,
+  .stat-card {
+    min-width: 0;
+  }
+}
+
 @media (max-width: 900px) {
   .auth {
     width: 100%;
