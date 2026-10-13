@@ -44,3 +44,7 @@ next-env.d.ts
 server.log
 npm-debug.log*
 
+# Android release signing material
+/secure/
+android/keystore.properties
+
