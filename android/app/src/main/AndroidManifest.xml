@@ -4,6 +4,8 @@
     <application
         android:allowBackup="false"
         android:label="NEXUS"
+        android:icon="@drawable/nexus_logo"
+        android:roundIcon="@drawable/nexus_logo"
         android:supportsRtl="true"
         android:theme="@style/Theme.Nexus">
         <activity
