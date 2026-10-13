@@ -1,0 +1,1 @@
+ALTER TABLE "ruangan" DROP COLUMN "lokasi";
