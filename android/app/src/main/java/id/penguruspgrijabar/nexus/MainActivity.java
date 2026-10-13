@@ -14,7 +14,7 @@ import android.widget.Toast;
 
 public class MainActivity extends Activity {
     // Ganti setelah URL Vercel production tersedia.
-    private static final String APP_URL = "https://nexus-pgrijabar.vercel.app/login";
+    private static final String APP_URL = "https://nexus-iota-drab.vercel.app/login";
     private WebView webView;
 
     @SuppressLint("SetJavaScriptEnabled")
