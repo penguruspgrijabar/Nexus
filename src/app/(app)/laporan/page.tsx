@@ -77,12 +77,20 @@ export default function LaporanPage() {
   }, [data]);
 
   const exportCsv = () => {
-      if (!data) return;
-      const csv = [KOLOM_LAPORAN, ...data.items.map(barisLaporan)]
-        .map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(";"))
-        .join("\r\n");
+    if (!data) return;
+    const sanitizeCsvCell = (val: unknown) => {
+      let str = String(val ?? "");
+      // Cegah formula injection jika diawali =, +, -, @, \t, \r
+      if (/^[=+\-@\t\r]/.test(str)) {
+        str = `'${str}`;
+      }
+      return `"${str.replace(/"/g, '""')}"`;
+    };
+    const csv = [KOLOM_LAPORAN, ...data.items.map(barisLaporan)]
+      .map((r) => r.map(sanitizeCsvCell).join(";"))
+      .join("\r\n");
 
-      const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
+    const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;

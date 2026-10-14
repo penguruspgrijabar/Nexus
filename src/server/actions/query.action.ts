@@ -1,7 +1,7 @@
 "use server";
 
 import { z } from "zod";
-import { actionClient } from "@/lib/safe-action";
+import { actionClient, adminActionClient } from "@/lib/safe-action";
 import {
   barangFilterSchema,
   idSchema,
@@ -38,10 +38,10 @@ export const listRuanganAction = actionClient
   .action(async () => listRuangan());
 
 /* -------------------------------- User ------------------------------- */
-
-export const listUsersAction = actionClient
-  .inputSchema(emptyInput)
-  .action(async () => listUsers());
+ 
+ export const listUsersAction = adminActionClient
+   .inputSchema(emptyInput)
+   .action(async () => listUsers());
 
 export const listUserRingkasAction = actionClient
   .inputSchema(emptyInput)

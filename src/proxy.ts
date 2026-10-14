@@ -1,9 +1,13 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { jwtVerify } from "jose";
 
-const secret = new TextEncoder().encode(
-  process.env.JWT_SECRET ?? "inventaris-dev-secret-change-in-production",
-);
+const JWT_ALGORITHM = "HS256" as const;
+
+function getMiddlewareSecret(): Uint8Array {
+  const value = process.env.JWT_SECRET;
+  if (!value) throw new Error("JWT_SECRET wajib diatur");
+  return new TextEncoder().encode(value);
+}
 
 const PUBLIC_PATHS = ["/login"];
 
@@ -14,7 +18,7 @@ export async function proxy(request: NextRequest) {
   let valid = false;
   if (token) {
     try {
-      await jwtVerify(token, secret);
+      await jwtVerify(token, getMiddlewareSecret(), { algorithms: [JWT_ALGORITHM] });
       valid = true;
     } catch {
       valid = false;

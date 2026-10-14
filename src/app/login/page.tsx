@@ -9,10 +9,27 @@ import { Icon } from "@/components/icons";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { LogoMark } from "@/components/ui/app-logo";
 
+function getSafeRedirectUrl(target: string | null): string {
+  if (!target) return "/dashboard";
+  // Wajib relative path berawalan satu '/' dan tidak diawali '//' atau protocol scheme
+  if (!target.startsWith("/") || target.startsWith("//") || target.includes(":\\")) {
+    return "/dashboard";
+  }
+  // Cegah karakter kontrol atau skema URL tersembunyi
+  try {
+    const dummyBase = "http://localhost";
+    const parsed = new URL(target, dummyBase);
+    if (parsed.origin !== dummyBase) return "/dashboard";
+    return parsed.pathname + parsed.search + parsed.hash;
+  } catch {
+    return "/dashboard";
+  }
+}
+
 function LoginForm() {
   const router = useRouter();
   const params = useSearchParams();
-  const nextUrl = params.get("next") ?? "/dashboard";
+  const nextUrl = getSafeRedirectUrl(params.get("next"));
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
