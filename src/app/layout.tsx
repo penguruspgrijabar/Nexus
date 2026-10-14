@@ -20,6 +20,9 @@ export const metadata: Metadata = {
     template: "%s | NEXUS",
   },
   description: "Sistem inventaris barang per ruangan — 1 unit, 1 kode, 1 kebenaran",
+  other: {
+    "strix-verification": "strix-verify-edd7e07feecaddccbcc4910d34950093",
+  },
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
