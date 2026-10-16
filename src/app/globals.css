@@ -1682,13 +1682,23 @@ body {
   .ruangan-table,
   .ruangan-table-admin,
   .ruangan-table-operator {
-    min-width: 700px;
+    width: max-content;
+    min-width: 100%;
     table-layout: auto;
+  }
+
+  .ruangan-table thead,
+  .ruangan-table thead tr {
+    background: var(--muted);
   }
 
   .ruangan-table th,
   .ruangan-table td {
     white-space: nowrap;
+  }
+
+  .ruangan-table th {
+    background: var(--muted);
   }
 
   .ruangan-table th:last-child,
