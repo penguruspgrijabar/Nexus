@@ -132,7 +132,7 @@ export default function RuanganPage() {
 
         {data && data.length > 0 && (
           <TableWrap>
-            <table className="table">
+            <table className={`table ruangan-table ${session?.role === "admin" ? "ruangan-table-admin" : "ruangan-table-operator"}`}>
               <thead>
                 <tr>
                   <th>Kode</th>

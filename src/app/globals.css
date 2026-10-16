@@ -643,6 +643,33 @@ body {
   background: color-mix(in srgb, var(--accent) 4%, transparent);
 }
 
+/* Tabel ruangan: admin memakai ruang aksi, operator tidak menyisakan kolom kosong. */
+.ruangan-table-admin th:last-child,
+.ruangan-table-admin td:last-child {
+  width: 1%;
+  min-width: 9rem;
+  white-space: nowrap;
+}
+
+.ruangan-table-admin td:last-child > div {
+  justify-content: center;
+}
+
+.ruangan-table-operator {
+  table-layout: fixed;
+}
+
+.ruangan-table-operator th:nth-child(1) { width: 15%; }
+.ruangan-table-operator th:nth-child(2) { width: 28%; }
+.ruangan-table-operator th:nth-child(3) { width: 10%; }
+.ruangan-table-operator th:nth-child(4) { width: 30%; }
+.ruangan-table-operator th:nth-child(5) { width: 17%; }
+
+.ruangan-table-operator th:last-child,
+.ruangan-table-operator td:last-child {
+  text-align: center;
+}
+
 .table .num,
 .table th.num {
   text-align: right;
