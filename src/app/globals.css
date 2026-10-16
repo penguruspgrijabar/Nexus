@@ -1679,30 +1679,52 @@ body {
     -webkit-overflow-scrolling: touch;
   }
 
-  .ruangan-table,
-  .ruangan-table-admin,
+  /* Operator: semua 5 kolom harus memenuhi kartu, tanpa area putih dan tanpa
+     scroll horizontal yang membuat header terlihat terpotong. */
   .ruangan-table-operator {
+    width: 100%;
+    min-width: 0;
+    table-layout: fixed;
+  }
+
+  .ruangan-table-operator thead,
+  .ruangan-table-operator thead tr,
+  .ruangan-table-operator th {
+    background: var(--muted);
+  }
+
+  .ruangan-table-operator th,
+  .ruangan-table-operator td {
+    padding: 0.55rem 0.45rem;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  .ruangan-table-operator th {
+    font-size: 0.58rem;
+    line-height: 1.25;
+  }
+
+  .ruangan-table-operator th:nth-child(1) { width: 15%; }
+  .ruangan-table-operator th:nth-child(2) { width: 27%; }
+  .ruangan-table-operator th:nth-child(3) { width: 10%; }
+  .ruangan-table-operator th:nth-child(4) { width: 30%; }
+  .ruangan-table-operator th:nth-child(5) { width: 18%; }
+
+  /* Admin tetap dapat menggeser tabel 6 kolom tanpa merusak header. */
+  .ruangan-table-admin {
     width: max-content;
-    min-width: 100%;
+    min-width: 700px;
     table-layout: auto;
   }
 
-  .ruangan-table thead,
-  .ruangan-table thead tr {
-    background: var(--muted);
-  }
-
-  .ruangan-table th,
-  .ruangan-table td {
+  .ruangan-table-admin th,
+  .ruangan-table-admin td {
     white-space: nowrap;
   }
 
-  .ruangan-table th {
-    background: var(--muted);
-  }
-
-  .ruangan-table th:last-child,
-  .ruangan-table td:last-child {
+  .ruangan-table-admin th:last-child,
+  .ruangan-table-admin td:last-child {
     min-width: 9rem;
   }
 
