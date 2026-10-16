@@ -31,7 +31,7 @@ async function assertKodeRuanganUnik(kode: string): Promise<void> {
   if (dup.length) returnServerError(`Kode ruangan "${kode}" sudah dipakai`);
 }
 
-export const createRuanganAction = operatorActionClient
+export const createRuanganAction = adminActionClient
   .inputSchema(insertRuanganSchema)
   .action(async ({ parsedInput, ctx }) => {
     let kode = parsedInput.kodeRuangan?.trim().toUpperCase() ?? "";
@@ -41,9 +41,7 @@ export const createRuanganAction = operatorActionClient
       kode = await generateKodeRuangan();
     }
 
-    // Operator hanya bisa membuat ruangan dengan dirinya sebagai penanggung jawab
-    const penanggungJawabId =
-      ctx.user.role === "operator" ? ctx.user.sub : parsedInput.penanggungJawabId ?? null;
+    const penanggungJawabId = parsedInput.penanggungJawabId ?? null;
 
     const [r] = await db
       .insert(ruangan)
@@ -62,7 +60,7 @@ const updateRuanganInput = z.object({
   data: updateRuanganSchema,
 });
 
-export const updateRuanganAction = operatorActionClient
+export const updateRuanganAction = adminActionClient
   .inputSchema(updateRuanganInput)
   .action(async ({ parsedInput, ctx }) => {
     const { id, data } = parsedInput;
@@ -74,11 +72,6 @@ export const updateRuanganAction = operatorActionClient
       .limit(1);
     if (!target) returnServerError("Ruangan tidak ditemukan");
 
-    // Operator hanya bisa mengupdate ruangan yang ditanggungjawabinya
-    if (ctx.user.role === "operator" && target.penanggungJawabId !== ctx.user.sub) {
-      returnServerError("Anda tidak memiliki akses ke ruangan ini");
-    }
-
     const safe = { ...data };
     delete safe.id;
     delete safe.createdAt;
@@ -88,11 +81,6 @@ export const updateRuanganAction = operatorActionClient
       const kode = safe.kodeRuangan.trim().toUpperCase();
       if (kode !== target.kodeRuangan) await assertKodeRuanganUnik(kode);
       safe.kodeRuangan = kode;
-    }
-
-    // Operator tidak bisa mengubah penanggung jawab
-    if (ctx.user.role === "operator") {
-      delete safe.penanggungJawabId;
     }
 
     const [r] = await db

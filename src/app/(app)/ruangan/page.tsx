@@ -65,7 +65,7 @@ function toPayload(v: FormValues) {
 
 export default function RuanganPage() {
   const session = useSession();
-  const canWrite = session?.role === "admin" || session?.role === "operator";
+  const canWrite = session?.role === "admin";
   const canDelete = session?.role === "admin";
 
   const { data, isPending, error } = useRuanganList();
