@@ -2,19 +2,30 @@ package id.penguruspgrijabar.nexus;
 
 import android.annotation.SuppressLint;
 import android.app.Activity;
+import android.content.ContentValues;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
+import android.os.Environment;
+import android.provider.MediaStore;
+import android.util.Base64;
 import android.view.View;
 import android.widget.FrameLayout;
+import android.webkit.CookieManager;
 import android.webkit.DownloadListener;
+import android.webkit.JavascriptInterface;
 import android.webkit.WebChromeClient;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.Toast;
+
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.OutputStream;
 
 public class MainActivity extends Activity {
     // Ganti setelah URL Vercel production tersedia.
@@ -53,6 +64,9 @@ public class MainActivity extends Activity {
         settings.setUserAgentString(settings.getUserAgentString() + " NexusAndroidApp");
         settings.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
 
+        webView.addJavascriptInterface(new PdfDownloadBridge(), "NexusDownload");
+        webView.addJavascriptInterface(new SessionBridge(), "NexusSession");
+        CookieManager.getInstance().setAcceptCookie(true);
         webView.setWebChromeClient(new WebChromeClient());
         webView.setDownloadListener(new DownloadListener() {
             @Override
@@ -84,6 +98,52 @@ public class MainActivity extends Activity {
             }
         });
         webView.loadUrl(APP_URL);
+    }
+
+    private final class SessionBridge {
+        @JavascriptInterface
+        public void clearCookies() {
+            CookieManager cookieManager = CookieManager.getInstance();
+            cookieManager.removeAllCookies(value -> cookieManager.flush());
+            cookieManager.removeSessionCookies(value -> cookieManager.flush());
+        }
+    }
+
+    private final class PdfDownloadBridge {
+        @JavascriptInterface
+        public void savePdf(String base64Data, String fileName) {
+            runOnUiThread(() -> {
+                try {
+                    byte[] pdfBytes = Base64.decode(base64Data, Base64.DEFAULT);
+                    String safeName = fileName == null ? "laporan-inventaris.pdf" : fileName.replaceAll("[^a-zA-Z0-9._-]", "_");
+                    if (!safeName.toLowerCase().endsWith(".pdf")) safeName += ".pdf";
+                    Uri savedUri;
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                        ContentValues values = new ContentValues();
+                        values.put(MediaStore.Downloads.DISPLAY_NAME, safeName);
+                        values.put(MediaStore.Downloads.MIME_TYPE, "application/pdf");
+                        values.put(MediaStore.Downloads.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS);
+                        savedUri = getContentResolver().insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values);
+                        if (savedUri == null) throw new IllegalStateException("Tidak dapat membuat file PDF");
+                        try (OutputStream output = getContentResolver().openOutputStream(savedUri)) {
+                            if (output == null) throw new IllegalStateException("Tidak dapat menulis file PDF");
+                            output.write(pdfBytes);
+                        }
+                    } else {
+                        File downloads = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
+                        if (!downloads.exists() && !downloads.mkdirs()) throw new IllegalStateException("Folder Downloads tidak tersedia");
+                        File outputFile = new File(downloads, safeName);
+                        try (FileOutputStream output = new FileOutputStream(outputFile)) {
+                            output.write(pdfBytes);
+                        }
+                        savedUri = Uri.fromFile(outputFile);
+                    }
+                    Toast.makeText(MainActivity.this, "PDF tersimpan di Downloads/" + safeName, Toast.LENGTH_LONG).show();
+                } catch (Exception e) {
+                    Toast.makeText(MainActivity.this, "Gagal menyimpan PDF: " + e.getMessage(), Toast.LENGTH_LONG).show();
+                }
+            });
+        }
     }
 
     @Override
