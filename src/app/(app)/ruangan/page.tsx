@@ -140,11 +140,7 @@ export default function RuanganPage() {
                   <th>Lantai</th>
                   <th>Penanggung Jawab</th>
                   <th>Barang</th>
-                  {
-                    canWrite && (
-                      <th className="text-center">Aksi</th>
-                    )
-                  }
+                  <th className="text-center">Aksi</th>
                 </tr>
               </thead>
               <tbody>
