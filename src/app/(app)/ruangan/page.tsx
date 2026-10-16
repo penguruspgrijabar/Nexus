@@ -140,6 +140,11 @@ export default function RuanganPage() {
                   <th>Lantai</th>
                   <th>Penanggung Jawab</th>
                   <th>Barang</th>
+                  {
+                    canWrite && (
+                      <th className="text-center">Aksi</th>
+                    )
+                  }
                 </tr>
               </thead>
               <tbody>
@@ -153,6 +158,31 @@ export default function RuanganPage() {
                       <Badge tone={r.jumlahBarang > 0 ? "brand" : "neutral"}>
                         {r.jumlahBarang} jenis
                       </Badge>
+                    </td>
+                    <td>
+                      <div className="flex gap-2 justify-end">
+                        {canWrite && (
+                          <button
+                            type="button"
+                            className="btn btn-ghost btn-sm"
+                            onClick={() => {
+                              setValues(toValues(r));
+                              setModal({ mode: "edit", row: r });
+                            }}
+                          >
+                            Ubah
+                          </button>
+                        )}
+                        {canDelete && (
+                          <button
+                            type="button"
+                            className="btn btn-danger btn-sm"
+                            onClick={() => setToDelete(r)}
+                          >
+                            Hapus
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}
