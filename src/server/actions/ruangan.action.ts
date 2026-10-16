@@ -33,7 +33,7 @@ async function assertKodeRuanganUnik(kode: string): Promise<void> {
 
 export const createRuanganAction = operatorActionClient
   .inputSchema(insertRuanganSchema)
-  .action(async ({ parsedInput }) => {
+  .action(async ({ parsedInput, ctx }) => {
     let kode = parsedInput.kodeRuangan?.trim().toUpperCase() ?? "";
     if (kode) {
       await assertKodeRuanganUnik(kode);
@@ -41,12 +41,16 @@ export const createRuanganAction = operatorActionClient
       kode = await generateKodeRuangan();
     }
 
+    // Operator hanya bisa membuat ruangan dengan dirinya sebagai penanggung jawab
+    const penanggungJawabId =
+      ctx.user.role === "operator" ? ctx.user.sub : parsedInput.penanggungJawabId ?? null;
+
     const [r] = await db
       .insert(ruangan)
       .values({
         ...parsedInput,
         kodeRuangan: kode,
-        penanggungJawabId: parsedInput.penanggungJawabId ?? null,
+        penanggungJawabId,
       })
       .returning();
 
@@ -60,7 +64,7 @@ const updateRuanganInput = z.object({
 
 export const updateRuanganAction = operatorActionClient
   .inputSchema(updateRuanganInput)
-  .action(async ({ parsedInput }) => {
+  .action(async ({ parsedInput, ctx }) => {
     const { id, data } = parsedInput;
 
     const [target] = await db
@@ -69,6 +73,11 @@ export const updateRuanganAction = operatorActionClient
       .where(eq(ruangan.id, id))
       .limit(1);
     if (!target) returnServerError("Ruangan tidak ditemukan");
+
+    // Operator hanya bisa mengupdate ruangan yang ditanggungjawabinya
+    if (ctx.user.role === "operator" && target.penanggungJawabId !== ctx.user.sub) {
+      returnServerError("Anda tidak memiliki akses ke ruangan ini");
+    }
 
     const safe = { ...data };
     delete safe.id;
@@ -79,6 +88,11 @@ export const updateRuanganAction = operatorActionClient
       const kode = safe.kodeRuangan.trim().toUpperCase();
       if (kode !== target.kodeRuangan) await assertKodeRuanganUnik(kode);
       safe.kodeRuangan = kode;
+    }
+
+    // Operator tidak bisa mengubah penanggung jawab
+    if (ctx.user.role === "operator") {
+      delete safe.penanggungJawabId;
     }
 
     const [r] = await db

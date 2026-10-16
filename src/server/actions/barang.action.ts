@@ -44,11 +44,19 @@ export const createBarangAction = operatorActionClient
     // Pastikan ruangan ada bila disertikan
     if (base.ruanganId) {
       const [r] = await db
-        .select({ id: ruangan.id })
+        .select({ id: ruangan.id, penanggungJawabId: ruangan.penanggungJawabId })
         .from(ruangan)
         .where(eq(ruangan.id, base.ruanganId))
         .limit(1);
       if (!r) returnServerError("Ruangan tidak ditemukan");
+
+      // Operator hanya bisa menambah barang ke ruangan yang ditanggungjawabinya
+      if (ctx.user.role === "operator" && r.penanggungJawabId !== ctx.user.sub) {
+        returnServerError("Anda tidak memiliki akses ke ruangan ini");
+      }
+    } else if (ctx.user.role === "operator") {
+      // Operator tidak boleh membuat barang tanpa ruangan (tanpa ruangan)
+      returnServerError("Operator harus menentukan ruangan");
     }
 
     const rows: { id: number; kodeBarang: string }[] = [];

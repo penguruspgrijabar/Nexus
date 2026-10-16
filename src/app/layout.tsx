@@ -35,6 +35,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <head>
         {/* Terapkan tema dari localStorage sebelum cat pertama (anti FOUC). */}
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
+        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
         <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
       </head>
       <body className="min-h-full">

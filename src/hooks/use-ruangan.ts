@@ -11,10 +11,10 @@ import {
 } from "@/server/actions/ruangan.action";
 import { listRuanganAction, listUserRingkasAction } from "@/server/actions/query.action";
 
-export function useRuanganList() {
+export function useRuanganList(all?: boolean) {
   return useQuery({
-    queryKey: ["ruangan"],
-    queryFn: async () => unwrap<RuanganRow[]>(await listRuanganAction({})),
+    queryKey: ["ruangan", { all }],
+    queryFn: async () => unwrap<RuanganRow[]>(await listRuanganAction({ all })),
   });
 }
 

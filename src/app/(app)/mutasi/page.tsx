@@ -30,7 +30,7 @@ export default function MutasiPage() {
   const [searchBarang, setSearchBarang] = useState("");
   const { data, isPending, error } = useMutasiList(barangIdFilter);
   const { data: barangList } = useBarangList({ page: 1, limit: 100 });
-  const { data: ruanganList } = useRuanganList();
+  const { data: ruanganList } = useRuanganList(true);
 
   // Filter barang list berdasarkan search dan urutkan prioritas
   const filteredBarang = barangList?.data.filter((b) =>

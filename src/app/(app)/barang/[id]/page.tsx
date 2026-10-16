@@ -18,7 +18,7 @@ export default function BarangDetailPage() {
   const canWrite = session?.role === "admin" || session?.role === "operator";
 
   const { data, isPending, error } = useBarangDetail(id);
-  const { data: ruanganList } = useRuanganList();
+  const { data: ruanganList } = useRuanganList(true);
 
   const [open, setOpen] = useState(false);
   const [tujuan, setTujuan] = useState("");

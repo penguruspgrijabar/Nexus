@@ -3,3 +3,4 @@ allowBuilds:
   unrs-resolver: false
   argon2: true
   esbuild: true
+  core-js: true

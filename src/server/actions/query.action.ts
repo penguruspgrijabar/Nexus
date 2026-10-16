@@ -25,23 +25,27 @@ const emptyInput = z.object({});
 
 export const listBarangAction = actionClient
   .inputSchema(barangFilterSchema)
-  .action(async ({ parsedInput }) => listBarang(parsedInput));
+  .action(async ({ parsedInput, ctx }) => listBarang(parsedInput, ctx.user?.role === "operator" ? ctx.user.sub : undefined));
 
 export const getBarangAction = actionClient
   .inputSchema(idSchema)
-  .action(async ({ parsedInput }) => getBarang(parsedInput.id));
+  .action(async ({ parsedInput, ctx }) => getBarang(parsedInput.id, ctx.user?.role === "operator" ? ctx.user.sub : undefined));
 
 /* ------------------------------- Ruangan ------------------------------ */
 
 export const listRuanganAction = actionClient
-  .inputSchema(emptyInput)
-  .action(async () => listRuangan());
+  .inputSchema(z.object({ all: z.boolean().optional() }))
+  .action(async ({ parsedInput, ctx }) =>
+    listRuangan(
+      parsedInput.all || ctx.user?.role !== "operator" ? undefined : ctx.user.sub,
+    ),
+  );
 
 /* -------------------------------- User ------------------------------- */
- 
- export const listUsersAction = adminActionClient
-   .inputSchema(emptyInput)
-   .action(async () => listUsers());
+
+export const listUsersAction = adminActionClient
+  .inputSchema(emptyInput)
+  .action(async () => listUsers());
 
 export const listUserRingkasAction = actionClient
   .inputSchema(emptyInput)
@@ -63,8 +67,8 @@ export const listMutasiAction = actionClient
 
 export const dashboardAction = actionClient
   .inputSchema(emptyInput)
-  .action(async () => getDashboard());
+  .action(async ({ ctx }) => getDashboard(ctx.user?.role === "operator" ? ctx.user.sub : undefined));
 
 export const laporanAction = actionClient
   .inputSchema(laporanFilterSchema)
-  .action(async ({ parsedInput }) => getLaporan(parsedInput));
+  .action(async ({ parsedInput, ctx }) => getLaporan(parsedInput, ctx.user?.role === "operator" ? ctx.user.sub : undefined));

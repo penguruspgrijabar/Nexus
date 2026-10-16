@@ -15,6 +15,8 @@ import {
 import { Icon } from "@/components/icons";
 import { KONDISI_LABEL, formatRupiah } from "@/lib/utils";
 import type { BarangRow } from "@/lib/types";
+import { jsPDF } from "jspdf";
+import autoTable from "jspdf-autotable";
 
 type RingkasTable = {
   title: string;
@@ -99,9 +101,11 @@ export default function LaporanPage() {
       URL.revokeObjectURL(url);
     };
 
-    /** Cetak PDF: dokumen print tersendiri dengan format tabel = format CSV. */
+    /** Export PDF: generate file PDF langsung via jsPDF & autotable, kompatibel dengan WebView Android. */
     const exportPdf = () => {
       if (!data) return;
+      const doc = new jsPDF({ orientation: "landscape", unit: "pt", format: "a4" });
+
       const judul = "Laporan Inventaris Barang";
       const tanggal = new Date().toLocaleDateString("id-ID", {
         day: "numeric",
@@ -119,97 +123,83 @@ export default function LaporanPage() {
         .filter(Boolean)
         .join(" · ");
 
-      const ringkasHtml = ringkasan
-        .map(
-          (s) => `
-        <h2>${escHtml(s.title)}</h2>
-        <table class="ringkas">
-          <thead><tr><th>${escHtml(s.head)}</th><th>Jumlah</th></tr></thead>
-          <tbody>
-            ${s.rows.map((r) => `<tr><td>${escHtml(String(r[0]))}</td><td class="num">${escHtml(String(r[1]))}</td></tr>`).join("")}
-          </tbody>
-        </table>`,
-        )
-        .join("");
+      let y = 40;
+      doc.setFontSize(16);
+      doc.setTextColor(30, 58, 138);
+      doc.text(judul, 40, y);
+      y += 18;
+      doc.setFontSize(10);
+      doc.setTextColor(75, 85, 99);
+      doc.text(`Per ${tanggal} | ${filterText}`, 40, y);
 
-      const detailRows = data.items
-        .map((b) => {
-          const cells = barisLaporan(b)
-            .map((c, i) => {
-              const harga = i === 6;
-              const kode = i === 0;
-              const cls = harga ? ' class="num"' : kode ? ' class="kode"' : "";
-              const isi = harga && c !== "" ? formatRupiah(Number(c)) : c;
-              return `<td${cls}>${escHtml(isi)}</td>`;
-            })
-            .join("");
-          return `<tr>${cells}</tr>`;
-        })
-        .join("");
+      y += 15;
+      const ringkasanData = [
+        { title: "Per Ruangan", head: "Ruangan", rows: data.byRuangan.map((r) => [r.ruangan, r.jumlah]) },
+        { title: "Per Kategori", head: "Kategori", rows: data.byKategori.map((r) => [r.kategori, r.jumlah]) },
+        { title: "Per Kondisi", head: "Kondisi", rows: data.byKondisi.map((r) => [KONDISI_LABEL[r.kondisi] ?? r.kondisi, r.jumlah]) },
+      ];
 
-      const html = `<!doctype html>
-  <html lang="id">
-  <head>
-  <meta charset="utf-8" />
-  <title>${judul}</title>
-  <style>
-    * { box-sizing: border-box; }
-    body { font-family: 'Segoe UI', Arial, sans-serif; color: #111827; margin: 0; padding: 0; }
-    .kepala { display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 3px solid #1d4ed8; padding-bottom: .6rem; margin-bottom: 1.2rem; }
-    .kepala h1 { font-size: 1.35rem; margin: 0; }
-    .kepala .meta { font-size: .8rem; color: #4b5563; text-align: right; }
-    .filter { font-size: .8rem; color: #374151; margin: .2rem 0 1rem; }
-    h2 { font-size: .95rem; margin: 1.1rem 0 .45rem; color: #1f2937; }
-    table { width: 100%; border-collapse: collapse; font-size: .78rem; }
-    .ringkas { max-width: 26rem; }
-    th, td { border: 1px solid #d1d5db; padding: .32rem .5rem; text-align: left; vertical-align: top; }
-    th { background: #eff6ff; color: #1e3a8a; font-weight: 600; }
-    .num { text-align: right; white-space: nowrap; }
-    .kode { font-family: Consolas, 'Courier New', monospace; }
-    .detail th { background: #1d4ed8; color: #fff; }
-    .detail tr:nth-child(even) td { background: #f9fafb; }
-    .total-row td { border-top: 2px solid #1d4ed8; font-weight: 700; background: #eff6ff; }
-    @media print {
-      .halaman { padding: 0; }
-      table { page-break-inside: auto; }
-      tr { page-break-inside: avoid; }
-    }
-  </style>
-  </head>
-  <body>
-    <div class="halaman">
-      <div class="kepala">
-        <h1>${judul}</h1>
-        <div class="meta">Per ${tanggal}<br />${escHtml(filterText)}</div>
-      </div>
+      ringkasanData.forEach((s, idx) => {
+        doc.setFontSize(11);
+        doc.setTextColor(31, 41, 55);
+        doc.text(s.title, 40 + idx * 250, y + 10);
+        autoTable(doc, {
+          startY: y + 15,
+          margin: { left: 40 + idx * 250 },
+          tableWidth: 230,
+          head: [[s.head, "Jumlah"]],
+          body: s.rows.map((r) => [String(r[0]), String(r[1])]),
+          theme: "striped",
+          headStyles: { fillColor: [30, 64, 175], fontSize: 9 },
+          bodyStyles: { fontSize: 8 },
+          columnStyles: { 1: { halign: "right" } },
+        });
+      });
 
-      ${ringkasHtml}
+      const finalStartY = Math.max(
+        (doc as any).lastAutoTable?.finalY || 150,
+        y + 120
+      );
 
-      <h2>Rincian Barang (${data.items.length})</h2>
-      <table class="detail">
-        <thead>
-          <tr>${KOLOM_LAPORAN.map((k) => `<th>${escHtml(k)}</th>`).join("")}</tr>
-        </thead>
-        <tbody>
-          ${detailRows}
-        </tbody>
-        <tfoot>
-          <tr class="total-row">
-            <td colspan="6">Total (${data.items.length} unit)</td>
-            <td class="num">${escHtml(formatRupiah(data.totals.nilai))}</td>
-          </tr>
-        </tfoot>
-      </table>
-    </div>
-    <script>window.onload = function(){ window.print(); };</script>
-  </body>
-  </html>`;
+      doc.setFontSize(12);
+      doc.setTextColor(30, 58, 138);
+      doc.text(`Rincian Barang (${data.items.length} unit)`, 40, finalStartY + 20);
 
-      const win = window.open("", "_blank", "width=900,height=700");
-      if (!win) return;
-      win.document.open();
-      win.document.write(html);
-      win.document.close();
+      const detailRows = data.items.map((b) => {
+        const row = barisLaporan(b);
+        return [
+          row[0],
+          row[1],
+          row[2] || "-",
+          row[3] || "-",
+          row[4],
+          row[5],
+          row[6] ? formatRupiah(Number(row[6])) : "-",
+        ];
+      });
+
+      autoTable(doc, {
+        startY: finalStartY + 28,
+        head: [KOLOM_LAPORAN as unknown as string[]],
+        body: detailRows,
+        theme: "striped",
+        headStyles: { fillColor: [30, 64, 175], fontSize: 9 },
+        bodyStyles: { fontSize: 8 },
+        margin: { left: 40, right: 40 },
+        columnStyles: { 6: { halign: "right" } },
+      });
+
+      const totalY = (doc as any).lastAutoTable.finalY + 15;
+      autoTable(doc, {
+        startY: totalY,
+        body: [["TOTAL NILAI PERSEDIAAN", formatRupiah(data.totals.nilai)]],
+        theme: "plain",
+        margin: { left: 40, right: 40 },
+        styles: { fontSize: 10, fontStyle: "bold", fillColor: [241, 245, 255] },
+        columnStyles: { 0: { halign: "left" }, 1: { halign: "right" } },
+      });
+
+      doc.save(`laporan-inventaris-${new Date().toISOString().slice(0, 10)}.pdf`);
     };
 
   const ringkasan: RingkasTable[] = data

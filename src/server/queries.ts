@@ -1,4 +1,4 @@
-import { and, asc, count, desc, eq, ilike, or, sql, type SQL } from "drizzle-orm";
+import { and, asc, count, desc, eq, ilike, inArray, or, sql, type SQL } from "drizzle-orm";
 import { db } from "@/server/db";
 import { barang, mutasiBarang, ruangan, users } from "@/server/db/schema";
 import type { BarangFilter } from "@/server/db/validation";
@@ -43,8 +43,27 @@ function serializeBarang(row: RawBarang): BarangRow {
   };
 }
 
-function barangWhere(filter: Partial<BarangFilter>): SQL | undefined {
+export async function getOperatorRuanganIds(userId: number): Promise<number[]> {
+  const assigned = await db
+    .select({ id: ruangan.id })
+    .from(ruangan)
+    .where(eq(ruangan.penanggungJawabId, userId));
+  return assigned.map((r) => r.id);
+}
+
+function barangWhere(filter: Partial<BarangFilter>, operatorUserId?: number, operatorRuanganIds?: number[]): SQL | undefined {
   const conds: SQL[] = [];
+
+  // Jika operator, batasi hanya pada ruangan yang ditanggungjawabinya
+  if (operatorUserId !== undefined && operatorRuanganIds !== undefined) {
+    if (operatorRuanganIds.length === 0) {
+      // Operator tidak punya ruangan -> tidak bisa lihat barang apa pun
+      conds.push(sql`1 = 0`);
+    } else {
+      conds.push(inArray(barang.ruanganId, operatorRuanganIds));
+    }
+  }
+
   if (filter.search) {
     const q = `%${filter.search}%`;
     const searchCond = or(
@@ -59,7 +78,12 @@ function barangWhere(filter: Partial<BarangFilter>): SQL | undefined {
     if (filter.ruanganId === -1) {
       conds.push(sql`${barang.ruanganId} is null`);
     } else {
-      conds.push(eq(barang.ruanganId, filter.ruanganId));
+      // Jika operator memilih ruangan tertentu, pastikan itu masuk tanggung jawabnya
+      if (operatorRuanganIds !== undefined && !operatorRuanganIds.includes(filter.ruanganId)) {
+        conds.push(sql`1 = 0`);
+      } else {
+        conds.push(eq(barang.ruanganId, filter.ruanganId));
+      }
     }
   }
   if (filter.kategori) conds.push(eq(barang.kategori, filter.kategori));
@@ -67,9 +91,24 @@ function barangWhere(filter: Partial<BarangFilter>): SQL | undefined {
   return conds.length ? and(...conds) : undefined;
 }
 
-export async function listBarang(filter: BarangFilter) {
-  const where = barangWhere(filter);
+export async function listBarang(filter: BarangFilter, operatorUserId?: number) {
+  let opRuanganIds: number[] | undefined = undefined;
+  if (operatorUserId !== undefined) {
+    opRuanganIds = await getOperatorRuanganIds(operatorUserId);
+  }
+
+  const where = barangWhere(filter, operatorUserId, opRuanganIds);
   const offset = (filter.page - 1) * filter.limit;
+
+  // Untuk kategori list, jika operator, batasi juga berdasarkan barang di ruangan miliknya
+  let kategoriWhere = sql`${barang.kategori} is not null and ${barang.kategori} <> ''`;
+  if (opRuanganIds !== undefined) {
+    if (opRuanganIds.length === 0) {
+      kategoriWhere = and(kategoriWhere, sql`1 = 0`)!;
+    } else {
+      kategoriWhere = and(kategoriWhere, inArray(barang.ruanganId, opRuanganIds))!;
+    }
+  }
 
   const [rows, [{ total }], kategoriRows] = await Promise.all([
     db
@@ -85,7 +124,7 @@ export async function listBarang(filter: BarangFilter) {
     db
       .selectDistinct({ kategori: barang.kategori })
       .from(barang)
-      .where(sql`${barang.kategori} is not null and ${barang.kategori} <> ''`)
+      .where(kategoriWhere)
       .orderBy(asc(barang.kategori)),
   ]);
 
@@ -99,13 +138,25 @@ export async function listBarang(filter: BarangFilter) {
   };
 }
 
-export async function getBarang(id: number) {
+export async function getBarang(id: number, operatorUserId?: number) {
+  let opRuanganIds: number[] | undefined = undefined;
+  if (operatorUserId !== undefined) {
+    opRuanganIds = await getOperatorRuanganIds(operatorUserId);
+  }
+
   const [row] = await db
     .select(barangSelection)
     .from(barang)
     .leftJoin(ruangan, eq(barang.ruanganId, ruangan.id))
     .leftJoin(users, eq(barang.dicatatOleh, users.id))
-    .where(eq(barang.id, id))
+    .where(
+      operatorUserId !== undefined
+        ? and(
+            eq(barang.id, id),
+            opRuanganIds!.length > 0 ? inArray(barang.ruanganId, opRuanganIds!) : sql`1 = 0`
+          )
+        : eq(barang.id, id)
+    )
     .limit(1);
 
   if (!row) return null;
@@ -114,17 +165,25 @@ export async function getBarang(id: number) {
 }
 
 /** Semua barang (tanpa pagination) — untuk laporan & export. */
-export async function listBarangForLaporan(filter: {
-  ruanganId?: number;
-  kategori?: string;
-  kondisi?: "baik" | "rusak_ringan" | "rusak_berat";
-}) {
+export async function listBarangForLaporan(
+  filter: {
+    ruanganId?: number;
+    kategori?: string;
+    kondisi?: "baik" | "rusak_ringan" | "rusak_berat";
+  },
+  operatorUserId?: number
+) {
+  let opRuanganIds: number[] | undefined = undefined;
+  if (operatorUserId !== undefined) {
+    opRuanganIds = await getOperatorRuanganIds(operatorUserId);
+  }
+
   const rows = await db
     .select(barangSelection)
     .from(barang)
     .leftJoin(ruangan, eq(barang.ruanganId, ruangan.id))
     .leftJoin(users, eq(barang.dicatatOleh, users.id))
-    .where(barangWhere(filter))
+    .where(barangWhere(filter, operatorUserId, opRuanganIds))
     .orderBy(asc(barang.namaBarang));
   return rows.map(serializeBarang);
 }
@@ -133,7 +192,12 @@ export async function listBarangForLaporan(filter: {
 /* Ruangan                                                             */
 /* ------------------------------------------------------------------ */
 
-export async function listRuangan(): Promise<RuanganRow[]> {
+export async function listRuangan(operatorUserId?: number): Promise<RuanganRow[]> {
+  let whereCondition;
+  if (operatorUserId !== undefined) {
+    whereCondition = eq(ruangan.penanggungJawabId, operatorUserId);
+  }
+
   const rows = await db
     .select({
       id: ruangan.id,
@@ -151,6 +215,7 @@ export async function listRuangan(): Promise<RuanganRow[]> {
     })
     .from(ruangan)
     .leftJoin(users, eq(ruangan.penanggungJawabId, users.id))
+    .where(whereCondition)
     .orderBy(asc(ruangan.kodeRuangan));
 
   return rows.map((r) => ({
@@ -261,7 +326,31 @@ export async function listMutasiBarang(barangId: number): Promise<MutasiRow[]> {
 /* Dasbor & Laporan                                                    */
 /* ------------------------------------------------------------------ */
 
-export async function getDashboard() {
+export async function getDashboard(operatorUserId?: number) {
+  let opRuanganIds: number[] | undefined = undefined;
+  if (operatorUserId !== undefined) {
+    opRuanganIds = await getOperatorRuanganIds(operatorUserId);
+  }
+
+  // Jika operator, agregat dihitung hanya untuk barang yang berada di ruangan miliknya
+  let barangFilterSql = undefined;
+  if (opRuanganIds !== undefined) {
+    if (opRuanganIds.length === 0) {
+      barangFilterSql = sql`1 = 0`;
+    } else {
+      barangFilterSql = inArray(barang.ruanganId, opRuanganIds);
+    }
+  }
+
+  let ruanganFilterSql = undefined;
+  if (opRuanganIds !== undefined) {
+    if (opRuanganIds.length === 0) {
+      ruanganFilterSql = sql`1 = 0`;
+    } else {
+      ruanganFilterSql = inArray(ruangan.id, opRuanganIds);
+    }
+  }
+
   const [
     agregat,
     [jumlahRuangan],
@@ -274,8 +363,9 @@ export async function getDashboard() {
         rusak: sql<number>`coalesce(sum(case when ${barang.kondisi} <> 'baik' then 1 else 0 end), 0)::int`,
         nilaiTotal: sql<number>`coalesce(sum(${barang.hargaBeli}), 0)::float8`,
       })
-      .from(barang),
-    db.select({ total: count() }).from(ruangan),
+      .from(barang)
+      .where(barangFilterSql),
+    db.select({ total: count() }).from(ruangan).where(ruanganFilterSql),
     listMutasi({ limit: 8 }),
   ]);
 
@@ -289,12 +379,15 @@ export async function getDashboard() {
   };
 }
 
-export async function getLaporan(filter: {
-  ruanganId?: number;
-  kategori?: string;
-  kondisi?: "baik" | "rusak_ringan" | "rusak_berat";
-}) {
-  const items = await listBarangForLaporan(filter);
+export async function getLaporan(
+  filter: {
+    ruanganId?: number;
+    kategori?: string;
+    kondisi?: "baik" | "rusak_ringan" | "rusak_berat";
+  },
+  operatorUserId?: number
+) {
+  const items = await listBarangForLaporan(filter, operatorUserId);
 
   const group = <T extends string>(keyFn: (b: BarangRow) => T) => {
     const map = new Map<T, { jumlah: number }>();
