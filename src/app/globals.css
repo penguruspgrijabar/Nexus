@@ -1673,6 +1673,29 @@ body {
 @keyframes nodePulse { 50% { transform: scale(1.5); opacity: 0.5; } }
 
 @media (max-width: 640px) {
+  /* Tabel ruangan tetap horizontal-scrollable di mobile agar header tidak bertumpuk. */
+  .table-wrap:has(.ruangan-table) {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .ruangan-table,
+  .ruangan-table-admin,
+  .ruangan-table-operator {
+    min-width: 700px;
+    table-layout: auto;
+  }
+
+  .ruangan-table th,
+  .ruangan-table td {
+    white-space: nowrap;
+  }
+
+  .ruangan-table th:last-child,
+  .ruangan-table td:last-child {
+    min-width: 9rem;
+  }
+
   .stat-hero,
   .stat-grid {
     grid-template-columns: minmax(0, 1fr);
