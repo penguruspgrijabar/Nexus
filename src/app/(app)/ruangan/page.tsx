@@ -154,31 +154,6 @@ export default function RuanganPage() {
                         {r.jumlahBarang} jenis
                       </Badge>
                     </td>
-                    <td>
-                      <div className="flex gap-2 justify-end">
-                        {canWrite && (
-                          <button
-                            type="button"
-                            className="btn btn-ghost btn-sm"
-                            onClick={() => {
-                              setValues(toValues(r));
-                              setModal({ mode: "edit", row: r });
-                            }}
-                          >
-                            Ubah
-                          </button>
-                        )}
-                        {canDelete && (
-                          <button
-                            type="button"
-                            className="btn btn-danger btn-sm"
-                            onClick={() => setToDelete(r)}
-                          >
-                            Hapus
-                          </button>
-                        )}
-                      </div>
-                    </td>
                   </tr>
                 ))}
               </tbody>
