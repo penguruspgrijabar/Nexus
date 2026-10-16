@@ -125,8 +125,11 @@ function Topbar({ onMenu }: { onMenu: () => void }) {
 
   const { execute, isPending } = useAction(logoutAction, {
     onSuccess: () => {
-      const sessionBridge = (window as Window & { NexusSession?: { clearCookies: () => void } }).NexusSession;
-      sessionBridge?.clearCookies();
+      const sessionBridge = (window as Window & { NexusSession?: { clearSession: () => void } }).NexusSession;
+      if (sessionBridge?.clearSession) {
+        sessionBridge.clearSession();
+        return;
+      }
       router.push("/login");
       router.refresh();
     },

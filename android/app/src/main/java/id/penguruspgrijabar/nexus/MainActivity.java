@@ -19,6 +19,7 @@ import android.webkit.JavascriptInterface;
 import android.webkit.WebChromeClient;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebSettings;
+import android.webkit.WebStorage;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.Toast;
@@ -102,10 +103,18 @@ public class MainActivity extends Activity {
 
     private final class SessionBridge {
         @JavascriptInterface
-        public void clearCookies() {
-            CookieManager cookieManager = CookieManager.getInstance();
-            cookieManager.removeAllCookies(value -> cookieManager.flush());
-            cookieManager.removeSessionCookies(value -> cookieManager.flush());
+        public void clearSession() {
+            runOnUiThread(() -> {
+                CookieManager cookieManager = CookieManager.getInstance();
+                cookieManager.removeAllCookies(value -> {
+                    cookieManager.flush();
+                    WebStorage.getInstance().deleteAllData();
+                    webView.clearHistory();
+                    webView.clearCache(true);
+                    webView.clearFormData();
+                    webView.loadUrl(APP_URL);
+                });
+            });
         }
     }
 
