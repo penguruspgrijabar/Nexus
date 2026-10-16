@@ -92,13 +92,23 @@ export default function LaporanPage() {
       .map((r) => r.map(sanitizeCsvCell).join(";"))
       .join("\r\n");
 
+    const fileName = `laporan-inventaris-${new Date().toISOString().slice(0, 10)}.csv`;
+    const downloadBridge = (window as Window & { NexusDownload?: { saveCsv: (data: string, name: string) => void } }).NexusDownload;
+    if (downloadBridge?.saveCsv) {
+      const bytes = new TextEncoder().encode("\uFEFF" + csv);
+      let binary = "";
+      bytes.forEach((byte) => { binary += String.fromCharCode(byte); });
+      downloadBridge.saveCsv(btoa(binary), fileName);
+      return;
+    }
+
     const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `laporan-inventaris-${new Date().toISOString().slice(0, 10)}.csv`;
-      a.click();
-      URL.revokeObjectURL(url);
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = fileName;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
     };
 
     /** Export PDF: generate file PDF langsung via jsPDF & autotable, kompatibel dengan WebView Android. */
@@ -199,7 +209,24 @@ export default function LaporanPage() {
         columnStyles: { 0: { halign: "left" }, 1: { halign: "right" } },
       });
 
-      doc.save(`laporan-inventaris-${new Date().toISOString().slice(0, 10)}.pdf`);
+      const fileName = `laporan-inventaris-${new Date().toISOString().slice(0, 10)}.pdf`;
+      const dataUri = doc.output("datauristring");
+      const base64 = dataUri.substring(dataUri.indexOf(",") + 1);
+
+      const downloadBridge = (window as Window & { NexusDownload?: { savePdf: (data: string, name: string) => void } }).NexusDownload;
+      if (downloadBridge?.savePdf) {
+        downloadBridge.savePdf(base64, fileName);
+        return;
+      }
+
+      // Browser biasa: unduh PDF lewat anchor, tanpa membuka dialog print.
+      const blob = doc.output("blob");
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = fileName;
+      link.click();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
     };
 
   const ringkasan: RingkasTable[] = data

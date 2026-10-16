@@ -2,6 +2,7 @@ package id.penguruspgrijabar.nexus;
 
 import android.annotation.SuppressLint;
 import android.app.Activity;
+import android.app.DownloadManager;
 import android.content.ContentValues;
 import android.content.Intent;
 import android.graphics.Bitmap;
@@ -65,7 +66,7 @@ public class MainActivity extends Activity {
         settings.setUserAgentString(settings.getUserAgentString() + " NexusAndroidApp");
         settings.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
 
-        webView.addJavascriptInterface(new PdfDownloadBridge(), "NexusDownload");
+        webView.addJavascriptInterface(new FileDownloadBridge(), "NexusDownload");
         webView.addJavascriptInterface(new SessionBridge(), "NexusSession");
         CookieManager.getInstance().setAcceptCookie(true);
         webView.setWebChromeClient(new WebChromeClient());
@@ -73,9 +74,16 @@ public class MainActivity extends Activity {
             @Override
             public void onDownloadStart(String url, String userAgent, String contentDisposition, String mimeType, long contentLength) {
                 try {
-                    Intent intent = new Intent(Intent.ACTION_VIEW);
-                    intent.setData(Uri.parse(url));
-                    startActivity(intent);
+                    DownloadManager.Request request = new DownloadManager.Request(Uri.parse(url));
+                    request.setTitle(contentDisposition == null ? "Unduhan NEXUS" : contentDisposition);
+                    request.setDescription("Mengunduh file");
+                    request.setMimeType(mimeType);
+                    request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
+                    request.setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, "unduhan-nexus");
+                    DownloadManager manager = (DownloadManager) getSystemService(DOWNLOAD_SERVICE);
+                    if (manager == null) throw new IllegalStateException("Download manager tidak tersedia");
+                    manager.enqueue(request);
+                    Toast.makeText(MainActivity.this, "Unduhan dimulai", Toast.LENGTH_SHORT).show();
                 } catch (Exception e) {
                     Toast.makeText(MainActivity.this, "Tidak dapat mengunduh file", Toast.LENGTH_SHORT).show();
                 }
@@ -118,9 +126,18 @@ public class MainActivity extends Activity {
         }
     }
 
-    private final class PdfDownloadBridge {
+    private final class FileDownloadBridge {
         @JavascriptInterface
         public void savePdf(String base64Data, String fileName) {
+            saveBase64(base64Data, fileName, "application/pdf");
+        }
+
+        @JavascriptInterface
+        public void saveCsv(String base64Data, String fileName) {
+            saveBase64(base64Data, fileName, "text/csv");
+        }
+
+        private void saveBase64(String base64Data, String fileName, String mimeType) {
             runOnUiThread(() -> {
                 try {
                     byte[] pdfBytes = Base64.decode(base64Data, Base64.DEFAULT);
@@ -130,7 +147,7 @@ public class MainActivity extends Activity {
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                         ContentValues values = new ContentValues();
                         values.put(MediaStore.Downloads.DISPLAY_NAME, safeName);
-                        values.put(MediaStore.Downloads.MIME_TYPE, "application/pdf");
+                        values.put(MediaStore.Downloads.MIME_TYPE, mimeType);
                         values.put(MediaStore.Downloads.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS);
                         savedUri = getContentResolver().insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values);
                         if (savedUri == null) throw new IllegalStateException("Tidak dapat membuat file PDF");
